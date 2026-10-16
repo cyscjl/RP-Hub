@@ -2539,10 +2539,21 @@
 
     <script>
         (function (stamp) {
-            ['built-in-content', 'core-utils', 'api-utils', 'data-services', 'remote-sync', 'runtime-services',
-                'update-check', 'ui-components', 'app'].forEach(name => {
-                document.write('<script src="assets/js/' + name + '.js?v=' + stamp + '"><\/script>');
-            });
+            const url = name => 'assets/js/' + name + '.js?v=' + stamp;
+            // 解析阶段写入的脚本按序执行（同步层先就位）
+            const loadNow = name => document.write('<script src="' + url(name) + '"><\/script>');
+            // 解析结束后 document.write 会清空页面，所以后续脚本必须动态插入；async=false 保证执行顺序
+            const loadLater = name => { const s = document.createElement('script'); s.async = false; s.src = url(name); document.head.appendChild(s); };
+            // 同步层必须先完成首次拉取，应用再读数据，否则会拿本地旧快照启动并覆盖服务端
+            ['built-in-content', 'core-utils', 'api-utils', 'data-services', 'remote-sync'].forEach(loadNow);
+            const t0 = Date.now();
+            (function waitSyncReady() {
+                const ready = window.RPHubSyncReady;
+                if (!ready && Date.now() - t0 < 8000) { setTimeout(waitSyncReady, 30); return; }
+                Promise.resolve(ready || null).catch(() => { }).then(() => {
+                    ['runtime-services', 'update-check', 'ui-components', 'app'].forEach(loadLater);
+                });
+            })();
         })(Date.now());
     </script>
 </body>
