@@ -114,7 +114,7 @@ const server = http.createServer(async (request, response) => {
 
 refreshLatestVersionId();
 
-server.listen(port, '0.0.0.0', () => {
+server.listen(port, process.env.HOST || '127.0.0.1', () => {
     console.log(`RP-Hub update check service listening on ${port}`);
 });
 
